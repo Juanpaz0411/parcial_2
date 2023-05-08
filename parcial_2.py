@@ -1,158 +1,362 @@
 import pandas as pd
 import os
+import numpy as np
+from sklearn.linear_model import LinearRegression
+import seaborn as sns
+import matplotlib.pyplot as plt
+import random
+
+
 
 class BaseDeDatos:
-    def __init__(self, **kwargs):
+    """
+    posee un conjunto de funciones que le permitirán al usuario 
+    realizar una serie de operaciones sobre archivos, bien sean de su elección o autogenerados
+    """
+    def __init__(self, **kwargs):#El método constructor de la clase recibe el nombre y la ruta de los archivos como  parámetros opcionales 
         self.databases = {}
-        for name, path in kwargs.items():
-            df = pd.read_csv(path)
-            self.databases[name] = df
-
-#punto 1
-    def procesar_archivos(self):
-        nombres = input('\nIngrese los nombres de los archivos separados por espacios:\n').split()
-        if not nombres or nombres == '':
-            exit()
+        if kwargs:
+            for nombre, ruta in kwargs.items(): #El diccionario contiene los nombres de los archivos y sus rutas correspondientes
+                df = pd.read_csv(ruta+"/"+nombre)#La ruta completa se obtiene al concatenar el nombre y la ubicación del archivO, TAMBIEN FUNCION os.path.abspath(os.path.join(directorio, nombre_archivo))
+                self.databases[nombre] = df# Cada base de datos es guardada en el diccionario databases teniendo su nombre como clave 
         else:
-            ingresar_ruta = input('\nDesea ingresar una ruta? Responda si o no:\n')
-            rutas = {}
+            self.generar_tablas()# Si no existen argumentos, el programa debe crear las bases de datos automáticamente 
 
-            if not ingresar_ruta or ingresar_ruta.lower() == 'no':#.lower permite que no importe si hay minuscula o mayuscula
-                ruta_actual = os.path.dirname(os.path.abspath(__file__))#se utiliza para obtener la ruta del directorio que contiene el archivo de script actual en Python.
-                rutas = {nombre: ruta_actual for nombre in nombres}
-                print('Como no se ingresó una ruta, la ruta por defecto será:', ruta_actual)
-            elif ingresar_ruta.lower() == 'si':
-                rutas_input = input('\nIngrese las rutas correspondientes a los archivos separadas por <;>:\n').split(';')
-                if len(rutas_input) < len(nombres):
-                    continuar = input('\nel numero de rutas es menor al numero de nombres de archivos, quiere continuar?\n')
-                    if continuar.lower() == 'si':
-                        print('Como no se ingresaron algunas rutas, para estos archivos la ruta será:', os.path.dirname(os.path.abspath(__file__)))
-                        ruta_actual = os.path.dirname(os.path.abspath(__file__))
-                        rutas_input.extend([ruta_actual] * (len(nombres) - len(rutas_input)))#.extended() agrega datos de una lista que esta en los parentesis a la que precede a .extended()
-                    else:
-                        exit()
-                elif len(rutas_input) > len(nombres):
-                    print('\nLa cantidad de rutas excede la cantidad de nombres de archivos \n')
-                    exit()
-                rutas = {nombre: ruta for nombre, ruta in zip(nombres, rutas_input)}#zip()mas de dos listas en tupla
+    #punto 3: 
+
+        #parte del punto 3
+    def cargar_tablas(self):
+        """
+        La función cargar_tablas() permite al usuario cargar las tablas necesarias a la base de datos
+        """
+        continuar = True
+        while continuar:
+            respuesta_usuario = input("\n¿Desea cargar una nueva tabla? Responda S [sí] o N [no]: \n")
+            if respuesta_usuario.lower() == 's':
+                self.cargar_tabla('Por favor ingrese el nombre del archivo:\n',
+                                  'Por favor ingrese la ruta en la que se encuentra el archivo:\n')
             else:
-                print('\nRespuesta inadecuada\n')
-                exit()
+                continuar = False
 
-            print('\nLos archivos con sus respectivas ubicaciones son:\n')
-            for nombre, ruta in rutas.items():
-                print("{} : {}".format(nombre, ruta))
 
-            verificacion = input('\nDesea verificar si los archivos están en las rutas indicadas? Responda si o no\n')
-            if verificacion.lower() == 'si':
-                self.validar_nombres_archivos(nombres, rutas)
-            else:
-                exit()
-# README.md commit_final.py parcial1.py
-#C:\Users\USUARIO WINDOWS\programacion\parcial_2;C:\Users\USUARIO WINDOWS\programacion\parcial_pruebas;C:\Users\USUARIO WINDOWS\programacion\parcial_1
+        #parte del punto 3
+    def cargar_tabla(self, mensaje_archivo, mensaje_ruta):
+        """
+        La función cargar_tabla() permite obtener el dataframe correspondiente a un archivo
+        """
+        nombre = input(mensaje_archivo)
+        ruta = input(mensaje_ruta)
+        archivo = os.path.join(ruta, nombre)#obtiene la direccion completa
 
-    def validar_nombres_archivos(self, nombres, rutas):
-        resultados = {}
-        for nombre, ruta in rutas.items():
-            archivo = os.path.join(ruta, nombre)
-            if os.path.exists(archivo):
-                resultados[nombre] = 'si está en la ruta indicada'
-                print("\n{} está en la ruta indicada".format(nombre))
-            else:
-                resultados[nombre] = 'no está en la ruta ingresada'
-                print("\n{} no está en la ruta ingresada".format(nombre))
+        try:
+            tabla = pd.read_csv(archivo)
+            self.databases[nombre] = tabla
+            print("La tabla fue añadida exitosamente")
+        except FileNotFoundError:
+            print("No se encontró el archivo CSV en la ruta especificada")
 
-#punto 3
-
-    def bases_csv(self):
-        respuesta = input("\nTiene alguna base de datos CSV para agregar? responda si o no:\n")
-        if not respuesta or respuesta.lower() == 'no':
-            self.generate_databases()
-    
-        elif respuesta.lower() == "si":
-            nombres = input('\nIngrese el nombre de las bases de datos, deben ser dos y estar separados por espacios:\n').split()
-            if len(nombres) != 2:
-                print('Error, debe ingresar exactamente dos archivos CSV.')
+        #parte del punto 3
+    def unir_tablas(self):
+        """
+        La función unir_tablas() permite mezclar dos tablas relacionadas por un identificador
+        """
+        print('Merge sobre tablas relacionadas\n\n')
+        nombre_1 = input('Ingrese el nombre de la primera tabla:\n')
+        tabla_1 = self.databases[nombre_1] if nombre_1 != '' else pd.DataFrame()
+        while tabla_1.empty:# Mientras el DataFrame tabla_1 esté vacío, el bucle se ejecutará
+            print('La tabla no existe en la base de datos. Por favor ingrese un nombre válido')
+            nombre_1 = input('Ingrese el nombre de la primera tabla. Si desea salir escriba exit\n')
+            if nombre_1.lower() == 'exit':
                 exit()
             else:
-                ingresar_ruta = input ('\nDesea ingresar la ruta? Responda si o no: \n')
-                if not ingresar_ruta or ingresar_ruta.lower() == 'no':
-                    ruta_actual = os.path.dirname(os.path.abspath(__file__))
-                    rutas = {nombre: ruta_actual for nombre in nombres}
-                    print('Como no se ingresó una ruta, la ruta por defecto será:', ruta_actual)
-                elif ingresar_ruta.lower() == 'si':
-                    rutas_input = input('\nIngrese las rutas correspondientes a los archivos separadas por <;>:\n').split(';')
-                    if len(rutas_input) < len(nombres):
-                        print('Como no se ingresó una ruta, para estos archivos la ruta será:', os.path.dirname(os.path.abspath(__file__)))
-                        ruta_actual = os.path.dirname(os.path.abspath(__file__))
-                        rutas_input.extend([ruta_actual] * (len(nombres) - len(rutas_input)))
-                    elif len(rutas_input) > len(nombres):
-                        print('\nLa cantidad de rutas excede la cantidad de nombres de archivos \n')
-                        exit()
-                    rutas = {nombre: ruta for nombre, ruta in zip(nombres, rutas_input)}
-                else:
-                    print('\nRespuesta inadecuada\n')
-                    exit()
-                
-                print('\nLos archivos con sus respectivas ubicaciones son:\n')
-                for nombre, ruta in rutas.items():
-                    print("{} : {}".format(nombre, ruta))
-                
-
-    def generate_databases(self):
-        data1 = {'nombre': ['Juan', 'Pedro', 'María', 'Luisa', 'Ana'],
-                'id': [1, 2, 3, 4, 5],
-                'edad': [25, 30, 27, 23, 28]}
-        df1 = pd.DataFrame(data1)#convierte data1 en un dataframe guardandolo en df1
-
-        data2 = {'id': ['Carlos', 'Sofía', 'Miguel', 'Laura', 'Andrés'],
-                'nombre': [101, 102, 103, 104, 105],
-                'edad': [35, 29, 33, 26, 31]}
-        df2 = pd.DataFrame(data2)
-
-        self.databases['Data_1'] = df1#diccionario con llave Database1 al que se le asigna df1 cono clave
-        self.databases['Data_2'] = df2
-
-        directory = os.path.dirname(os.path.abspath(__file__)) 
-
-        ruta1 = os.path.join(directory, 'database1.csv')  # ruta COMPLETA de database1 al ser convertido en csv
-        ruta2 = os.path.join(directory, 'database2.csv')  #se agrega nombre a las databases.csv nuevas
-
-        df1.to_csv(ruta1)  # se guardan los df en csv
-        df2.to_csv(ruta2)  
-
-        print('\nSe generaron dos bases de datos y se han guardaron como archivos CSV en:', directory)
-        print('\nDatabase1:')
-        print(df1)
-        print('\nDatabase2:')
-        print(df2)
-
-        borrar = input('¿Desea conservar los archivos generados? Responda si o no:\n')
-        if borrar.lower() == 'no':
-            if os.path.exists(ruta1):
-                os.remove(ruta1)#borra el archivo en la direccion completa ruta1
-                print('database1.csv eliminado.')
-
-            if os.path.exists(ruta2):
-                os.remove(ruta2)
-                print('database2.csv eliminado.')
+                tabla_1 = self.databases[nombre_1] if nombre_1 != '' else pd.DataFrame()#si se no se ingresa nada en nombre_1 se repite el bucle
+        nombre_2 = input('Ingrese el nombre de la segunda tabla:\n')
+        tabla_2 = self.databases[nombre_2] if nombre_2 != '' else pd.DataFrame()
+        while tabla_2.empty:
+            print('La tabla no existe en la base de datos. Por favor ingrese un nombre válido')
+            nombre_2 = input('Ingrese el nombre de la segunda tabla. Si desea salir escriba exit\n')
+            if nombre_2.lower() == 'exit':
+                exit()
+            else:
+                tabla_2 = self.databases[nombre_2] if nombre_2 != '' else pd.DataFrame()
+        columna_1 = input('Ingrese el nombre de la columna que relaciona ambas tablas para la tabla 1:\n')# Se solicitan los nombres de los identificadores que relacionan las tablas 
+        columna_2 = input('Ingrese el nombre de la columna que relaciona ambas tablas para la tabla 2:\n')
+        if columna_1 != '' and columna_2 != '':
+            tabla_merge = pd.merge(tabla_1, tabla_2, left_on=columna_1,right_on=columna_2)# La función merge() permite unir las tablas de acuerdo a identificadores comunes , or defecto se agregan sufijos "_x" y "_y" a los nombres de las columnas que existen en ambas tablas para distinguirlas. 
+            # left_on: Se utiliza para especificar la(s) columna(s) del DataFrame de la izquierda (tabla_1) que se utilizará(n) para la combinación.
+            print(tabla_merge)
+            tabla_merge_df = pd.DataFrame(tabla_merge)
+            # self.filtrado(tabla_merge_df)
+            # self.generarar_matriz(tabla_merge_df)
+            # self.coeficientes(tabla_merge_df)
+            self.grafica_dispersion(tabla_merge_df)
         else:
-            exit()
+            print('Las columnas indicadas no son válidas')
+
+        #punto 8
+    def filtrado(self, tabla_merge_df):
+        '''
+        recibe condiciones para los datos tipo cadena y filtre los datos de la tabla con base en esa condición.
+        usando sintaxis de consulta de Pandas ejemplo 'nombre_columna'=>2, ==2,<=2 e incluso (edad > 30) & (salario <= 5000)
+        '''
+        condicion = input("Ingrese la condición de filtrado (usando sintaxis de consulta de Pandas ejemplo 'nombre_columna' => 25 , == 2, <= 2): ")
+        tabla_filtrada = tabla_merge_df.query(condicion)#query() se aplica a tabla_merge con la condición proporcionada por el usuario. La condición debe seguir la sintaxis de consulta de Pandas para filtrar los datos.
+        print("Tabla filtrada:")
+        print(tabla_filtrada)
+
+
+        #puntos 10
+    def generarar_matriz(self, tabla_merge_df):
+        '''
+        genera una matriz que tiene en cada elemento i, j la correlación entre la columna i y la columna j de la tabla mezclada.
+        '''
+        matriz_corr = tabla_merge_df.corr(numeric_only=True)# El método corr() se aplica directamente a tabla_merge para calcular la matriz de correlación entre las columnas numéricas. Luego, la matriz de correlación se imprime en la salida.
+        #numeric_only=True se le dice a pandas que solo tenga en cuenta las columnas numéricas 
+        print("Matriz de correlación:")
+        print(matriz_corr)
+
+        #punto 11
+    def coeficientes(self, tabla_merge_df):
+        '''
+        calcula los coeficientes de regresión lineal para dos columnas elegidas por el usuario.
+        '''
+        columna_1 = input("Ingrese el nombre de la primera columna para el cálculo de los coeficientes de regresión lineal: ")
+        columna_2 = input("Ingrese el nombre de la segunda columna para el cálculo de los coeficientes de regresión lineal: ")
+
+        if columna_1 in tabla_merge_df.columns and columna_2 in tabla_merge_df.columns:
+            if tabla_merge_df[columna_1].dtype == 'object' or tabla_merge_df[columna_2].dtype == 'object':
+                print('Error: Solo se pueden utilizar columnas numéricas para el cálculo de los coeficientes de regresión lineal.')
+                exit()
+            else:
+                X = tabla_merge_df[columna_1].values.reshape(-1, 1)
+                y = tabla_merge_df[columna_2].values.reshape(-1, 1)
+                # tabla_merge[columna_1]: Accede a la columna columna_1 en la tabla combinada (tabla_merge).
+                # .values: Obtiene los valores de la columna como un array de NumPy.
+                # .reshape(-1, 1): Reshapea el array a una matriz de una sola columna, donde el número de filas se ajusta automáticamente (-1) y el número de columnas se establece en 1.
+
+                regresion = LinearRegression()# Crear y ajustar el modelo de regresión lineal
+                regresion.fit(X, y)#.fit() se encarga de encontrar los coeficientes del modelo de regresión lineal que mejor se ajusten a los datos proporcionados. Realiza el proceso de aprendizaje utilizando los datos de entrenamiento y ajusta los parámetros internos del modelo para minimizar el error entre los valores reales y los valores predichos por el modelo.
+
+                coeficiente_intercepto = regresion.intercept_[0] #coeficiente_intercepto es el valor de la variable dependiente cuando todas las variables independientes son cero. 
+                coeficiente_pendiente = regresion.coef_[0][0]#coeficiente_pendiente es el coeficiente de pendiente que indica el cambio esperado en la variable dependiente por unidad de cambio en la variable independiente.
+
+
+                print("Coeficientes de regresión lineal:")
+                print(f"Intercepto: {coeficiente_intercepto}")
+                print(f"Pendiente: {coeficiente_pendiente}")
+        else:
+            print("Las columnas ingresadas no existen en la tabla mezclada.")
+
+        #punto 12
+    def grafica_dispersion(self, tabla_merge_df):
+        '''
+        Genera una gráfica de dispersión y una línea de regresión lineal en el mismo gráfico para dos columnas elegidas por el usuario.
+        '''
+        columna_1 = input('Ingrese el nombre de la primera columna para la gráfica de dispersión: ')
+        columna_2 = input('Ingrese el nombre de la segunda columna para la gráfica de dispersión: ')
+
+        if columna_1 in tabla_merge_df.columns and columna_2 in tabla_merge_df.columns:
+            if tabla_merge_df[columna_1].dtype == 'object' or tabla_merge_df[columna_2].dtype == 'object':
+                print('La columna 1 o la columna 2 no es de tipo numérico.')
+                exit()
+            else:
+                sns.lmplot(data=tabla_merge_df, x=columna_1, y=columna_2)
+                plt.xlabel(columna_1)
+                plt.ylabel(columna_2)
+                plt.title('Gráfica de Dispersión')
+                plt.tight_layout()  # Ajustar la escala de la gráfica
+                plt.show()
+        else:
+            print('Las columnas indicadas no existen en la tabla combinada.')
             
+    #punto 15
+    def graficar_3d(self,funcion, nombre_col_x, nombre_col_y):
+        """
+        La función graficar_3d() permite obtener una gráfica a partir de una función lambda
+        y el nombre las columnas correspondientes a los valores x - y
+        Hace uso de la función generar_tabla_prueba() para crear una tabla con valores aleatorios
+        a modo de prueba del método
+        """
+        tabla = self.generar_tabla_prueba(1000)#numero de pares ordenados o valores en la gráfica 3d
+        #Se obtienen los valores correspondientes a las columnas indicadas por el usuario 
+        col_x = tabla[nombre_col_x]
+        col_y = tabla[nombre_col_y]
+
+        ### La función map() permite aplicar lambda a cada elemnto (x, y) ###
+        ### De esta forma se genera el eje z ###
+        col_z = list(map(funcion,col_x,col_y))
+        ### Se crea la figura ###
+        fig = plt.figure()
+        ### Se crea el plano en 3D ###
+        plano = fig.add_subplot(111, projection='3d')
+
+        ### Se agregan los valores correspondiientes a cada eje ###
+        ### c indica el color (b = blue) marker la forma en la que se marcan los puntos (D = diamantes)
+        plano.scatter(col_x, col_y, col_z, c='b', marker='D')
+
+        ### Se indica el nombre de los ejes y el título ###
+        plt.xlabel(nombre_col_x)
+        plt.ylabel(nombre_col_y)
+        plt.title('Gráfico en 3D')
+
+        plt.show() # Se muestra el gráfico creado ###
+
+    #parte punto 15
+    def generar_tabla_prueba(self, cant_valores):
+        """
+        El método generar_tabla_prueba() crea una tabla con datos numéricos genéricos de acuerdo
+        a una cantidad de valores especificada
+        """
+        ### Los valores aleatorios se generan con los métodos del módulo random ###
+        tabla = {'peso': [random.randint(30, 80) for i in range(cant_valores)],
+                 'altura': [random.uniform(1.5, 2) for i in range(cant_valores)],
+                 'edad': [random.randint(10, 80) for i in range(cant_valores)],
+                 'distancia': [random.randint(20, 100) for i in range(cant_valores)], }
+        df = pd.DataFrame(tabla)
+        return df
+
+
+    #parte del punto 1
+    def generar_tablas(self):
+        '''
+        Se construyen las tablas a partir de dos diccionarios
+        Las tablas genéricas son empleados y ocupaciones, las cuales 
+        están relacionadas por la columna id_ocupacion
+        '''
+        empleados = {'nombre': ['Juan', 'Pedro', 'María', 'Luisa', 'Ana'],
+                     'id': [1, 2, 3, 4, 5],
+                     'edad': [25, 30, 27, 23, 28],
+                     'id_ocupacion': [1, 2, 3, 4,3],}
+
+        ocupaciones = {'id': [1, 2, 3, 4],
+                       'nombre': ['Administrador', 'Contador', 'RH', 'Ingeniero civil'],
+                       'salario': [3500000, 2900000, 3300000, 2600000]}
+
+        tabla_empleados = pd.DataFrame(empleados) #Cada diccionario es convertido en DataFrame
+        tabla_ocupaciones = pd.DataFrame(ocupaciones)
+
+        self.databases['empleados.csv'] = tabla_empleados #Los dataframes son añadidos a la base de datos 
+        self.databases['ocupaciones.csv'] = tabla_ocupaciones
+
+        ruta_actual = os.path.dirname(os.path.abspath(__file__))
+
+        ruta_empleados = os.path.join(ruta_actual, 'empleados.csv') #Se genera la ruta completa para los nuevos archivos en formato CSV 
+        ruta_ocupaciones = os.path.join(ruta_actual, 'ocupaciones.csv')
+
+        tabla_empleados.to_csv(ruta_empleados)  # Cada Data Frame es guardado como archivo CSV 
+        tabla_ocupaciones.to_csv(ruta_ocupaciones)
 
 
 
+#parte del punto 1
+def imprimir_rutas(rutas):
+    """
+    La función imprimir_rutas permite mostrar las rutas que han sido ingresadas  por el usuario
+    """
+    print('\nLos archivos con sus respectivas ubicaciones son:\n')
+
+    for nombre, ruta in rutas.items(): #items() regresa los pares clave  [nombre] - valor [ruta] en forma de tuplas 
+        print("{} : {}".format(nombre, ruta))
 
 
-x = int(input('que punto del parcial se va a exponer? 1, 3, 8, 10, 11, 12, 15\n'))
+def validar_rutas(rutas):
+    """
+    La función validar_rutas permite verificar la existencia de los archivos indicados por el usuario
+    Retorna True si todos los archivos han sido encontrados. De cualquier otra manera, retorna False
+    """
+    ruta_incorrecta = "" # Se concatenan los nombres de las rutas que no sean encontradas
+    for nombre, ruta in rutas.items():
+        archivo = os.path.join(ruta, nombre) # Se obtiene la ruta del archivo 
+        if not os.path.exists(archivo): #Si el archivo no se encuentra, la ruta se considera como incorrecta 
+           ruta_incorrecta += "\n"+nombre#agregar el nombre del archivo a la variable ruta_incorrecta.
+    if ruta_incorrecta == "":
+        print("Todas las rutas han sido ingresadas correctamente")
+        return True
+    else:
+        print("Los siguientes archivos no se encuentran en la ruta indicada:"+ruta_incorrecta)
+        return False
 
-if x is None or x not in (1, 3, 8, 10, 11, 12, 15):
-    print('Respuesta invalida')
+
+def obtener_rutas():
+    """
+    La función obtener_rutas() permite solicitar al usuario tanto el nombre de los 
+    archivos como la ruta correspondiente a cada uno. Hace uso de las funciones 
+    imprimir_rutas() y validar_rutas(), las cuales permiten mostrar cada ubicación y 
+    validarla respectivamente. Retorna un diccionario con las rutas indicadas por 
+    el usuario (en caso de que hayan sido ingresadas) Si el usuario no indica los
+    archivos a ser cargados, retorna None
+    """
+    nombres = input('\nIngrese los nombres de los archivos separados por comas:\n').split(',') #La función split() convierte la cadena en una lista según un caracter separador 
+
+    nombres = list(map(lambda nombre: nombre.strip(),nombres))# La función map() hace uso de la función strip() para eliminar los espacios en blanco al inicio y al final de cada cadena de la lista de nombres
+    
+    if nombres != ['']: # Si el usuario no especifica el nombre de los archivos, nombres será una lista con un caracter vación en su interior. Así, el programa debe generar automáticamente las tablas
+
+        ruta_actual = os.path.dirname(os.path.abspath(__file__))# Se toma como referencia el archivo actual (__file__) para obtener la ruta 
+        respuesta_rutas = input('\n¿Los archivos se encuentran en una ruta diferente a la actual: {}?'.format(ruta_actual)+'\nResponda S [sí] o N [no]: ')
+
+        isIngresar = True if respuesta_rutas.lower() == 's' else False # Se verifica si el usuario desea ingresar las rutas manualmente
+        rutas = {}
+
+        if isIngresar:
+
+            for nombre in nombres:
+                ruta = input('\nIngrese las ruta correspondiente al archivo {}'.format(nombre))
+                if not ruta or ruta == '': # Se debe verificar si el usuario ha ingresado una ruta ,Si lo hizo, la ruta es agregada al diccionario tomando como clave el nombre del archivo 
+                        rutas[nombre] = ruta_actual
+                # Si el usuario no ingresa una ruta, se asigna la ruta actual por defecto 
+                else:
+                        rutas[nombre] = ruta  # Si el usuario no quiere ingresar las rutas de manera manual, se hace uso de la ruta por defecto 
+                        
+        else:
+            rutas = {nombre: ruta_actual for nombre in nombres}
+
+        imprimir_rutas(rutas) # Se muestran las rutas ingresadas por el usuario 
+
+        is_rutas_validas = validar_rutas(rutas) # Si las rutas ingresadas son válidas, se retornan
+
+        if is_rutas_validas: # De lo contrario, se retorna None por defecto 
+            return rutas
+
+
+# empleados.csv ocupaciones.csv   #Los empleados están relacionados con las ocupaciones a través del id_ocupacion las ocupaciones con los empleados con id
+# C:\Users\USUARIO WINDOWS\programacion\p2 help 
+
+
+"""
+    Ejecución principal del programa
+"""
+
+pregunta = int(input('¿Qué punto del parcial se va a exponer? Elija un valor entre 1, 3, 8, 10, 11, 12, 15\n'))
+
+if pregunta is None or pregunta not in (1, 3, 8, 10, 11, 12, 15):
+    print('El valor indicado no se encuentra dentro del rango')
     exit()
-elif x==1:
-    bd = BaseDeDatos()
-    bd.procesar_archivos()
-elif x==3:
-    bd = BaseDeDatos()
-    bd.bases_csv()
 
+elif pregunta == 1: # El primer punto es resuelto a través de las funciones obtenerRutas() validar_rutas() e imprimir_rutas()  
+    # Las rutas son solicitadas al usuario para poder iniciar la clase 
+    rutas = obtener_rutas()
+    if rutas:
+        bd = BaseDeDatos(**rutas)
+    # Si las rutas no son encontradas, se crea una base de datos con tablas por defecto 
+    else:
+        bd = BaseDeDatos()
+
+elif pregunta == 3 or pregunta == 8 or pregunta == 10 or pregunta == 11 or pregunta == 12:#al ejecutar seccion se resuelven las preguntas 3, 8, 10, 11
+    bd = BaseDeDatos() #Se instancia la base de datos 
+    ### En caso de que el usuario desee cargar nuevas tablas, se le solicitan las rutas ###
+    bd.cargar_tablas()
+    ### A partir de dos tablas elegidas por el usuario, se genera una nueva tabla correspondiente ###
+    ### a la unión de estas ###
+    bd.unir_tablas()
+    # Los empleados están relacionados con las ocupaciones a través del id_ocupacion
+
+elif pregunta==15:
+     ### Se instancia la base de datos ###
+     bd = BaseDeDatos()
+
+     ### Se llama al método graficar_3d() con la función lambda y los valores x - y ###
+     bd.graficar_3d((lambda x,y:x**y),'peso','edad')#aca se ingresa la funcion matemática en X y Y
+
+else:
+    print('respuesta invalida ')
