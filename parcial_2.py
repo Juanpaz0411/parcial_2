@@ -201,36 +201,6 @@ class BaseDeDatos:
         else:
             print("Las columnas ingresadas no existen en la tabla mezclada.")
 
-    # def grafica_dispersion(self, tabla_merge_df):
-    #     '''
-    #     Genera una gráfica de dispersión y una línea de regresión lineal en el mismo gráfico para dos columnas elegidas por el usuario.
-    #     '''
-    #     sns.set(style='whitegrid')  # Establecer el estilo del gráfico
-
-    #     columna_1 = input('Ingrese el nombre de la primera columna para la gráfica de dispersión: ')
-    #     columna_2 = input('Ingrese el nombre de la segunda columna para la gráfica de dispersión: ')
-
-    #     if columna_1 in tabla_merge_df.columns and columna_2 in tabla_merge_df.columns:
-    #         if tabla_merge_df[columna_1].dtype == 'object' or tabla_merge_df[columna_2].dtype == 'object':
-    #             print('La columna 1 o la columna 2 no es de tipo numérico.')
-    #             exit()
-    #         else:
-    #             plt.figure(figsize=(8, 6))  # Ajustar el tamaño de la gráfica
-    #             sns.lmplot(data=tabla_merge_df, x=columna_1, y=columna_2, marker='D')  # Utilizar 'D' para representar diamantes como marcadores
-    #             # Personalizar la gráfica
-    #             plt.xlabel(columna_1)
-    #             plt.ylabel(columna_2)
-    #             plt.title('Gráfica de Dispersión')
-
-    #             # Agregar leyenda
-    #             plt.legend(labels=['Datos'])
-
-    #             # Mostrar la gráfica
-    #             plt.show()
-    #     else:
-    #         print('Las columnas indicadas no existen en la tabla combinada.')
-
-
     #punto 12
     @print_function_name
     def grafica_dispersion(self, tabla_merge_df):
